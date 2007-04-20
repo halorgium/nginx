@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+./configure \
+	--prefix=/usr/local/nginx \
+	--user=nginx \
+	--group=nginx \
+	--with-http_ssl_module
+
+make
+

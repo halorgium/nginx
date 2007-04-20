@@ -132,6 +132,33 @@ ngx_module_t  ngx_http_rewrite_module = {
     NGX_MODULE_V1_PADDING
 };
 
+static struct ngx_rewrite_file_op_map_t {
+	char ch;
+	ngx_http_script_file_op_e op;
+	ngx_http_script_file_op_e negated_op;
+} ngx_rewrite_file_op_map[] = {
+	{ 'f', ngx_http_script_file_plain, ngx_http_script_file_not_plain },
+	{ 'd', ngx_http_script_file_dir, ngx_http_script_file_not_dir },
+	{ 'e', ngx_http_script_file_exists, ngx_http_script_file_not_exists },
+	{ 'x', ngx_http_script_file_exec, ngx_http_script_file_not_exec },
+	{ 0, -1, -1 }
+};
+
+static ngx_http_script_file_op_e
+ngx_http_rewrite_find_file_op(char ch, int negated)
+{
+	struct ngx_rewrite_file_op_map_t *entry = ngx_rewrite_file_op_map;
+
+	while (entry->ch) {
+		if (ch == entry->ch) {
+			if (negated)
+				return entry->negated_op;
+			return entry->op;
+		}
+		entry++;
+	}
+	return (ngx_http_script_file_op_e) -1;
+}
 
 static ngx_int_t
 ngx_http_rewrite_handler(ngx_http_request_t *r)
@@ -820,47 +847,15 @@ ngx_http_rewrite_if_condition(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf)
 
         fop->code = ngx_http_script_file_code;
 
-        if (p[1] == 'f') {
-            fop->op = ngx_http_script_file_plain;
-            return NGX_CONF_OK;
-        }
+	if (p[0] == '!') {
+		fop->op = ngx_http_rewrite_find_file_op(p[2], 1);
+	} else {
+		fop->op = ngx_http_rewrite_find_file_op(p[1], 0);
+	}
 
-        if (p[1] == 'd') {
-            fop->op = ngx_http_script_file_dir;
-            return NGX_CONF_OK;
-        }
-
-        if (p[1] == 'e') {
-            fop->op = ngx_http_script_file_exists;
-            return NGX_CONF_OK;
-        }
-
-        if (p[1] == 'x') {
-            fop->op = ngx_http_script_file_exec;
-            return NGX_CONF_OK;
-        }
-
-        if (p[0] == '!') {
-            if (p[2] == 'f') {
-                fop->op = ngx_http_script_file_not_plain;
-                return NGX_CONF_OK;
-            }
-
-            if (p[2] == 'd') {
-                fop->op = ngx_http_script_file_not_dir;
-                return NGX_CONF_OK;
-            }
-
-            if (p[2] == 'e') {
-                fop->op = ngx_http_script_file_not_exists;
-                return NGX_CONF_OK;
-            }
-
-            if (p[2] == 'x') {
-                fop->op = ngx_http_script_file_not_exec;
-                return NGX_CONF_OK;
-            }
-        }
+	if (fop->op != (ngx_http_script_file_op_e) -1) {
+		return NGX_CONF_OK;
+	}
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid condition \"%V\"", &value[cur]);

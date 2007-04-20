@@ -7,6 +7,63 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+static int
+check_symlink_permissions(const char *name)
+{
+	struct stat sb;
+	uid_t link_uid;
+	if (lstat(name, &sb) < 0)
+		return -1;
+
+	if (!S_ISLNK(sb.st_mode))
+		return 0;
+
+	link_uid = sb.st_uid;
+
+	if (stat(name, &sb) < 0)
+		return -1;
+
+	if (link_uid == sb.st_uid)
+		return 0;
+
+	errno = NGX_EACCES;
+	return -1;
+}
+
+static int
+ngx_walk_path_down(const char *name, int(*walk_func)(const char*))
+{
+	char *name_copy = strdup(name);
+	char *p = name_copy;
+	char *q = name_copy;
+
+	while ((q = strchr(p, '/'))) {
+		p = q;
+		*q = 0;
+		if (q != name_copy) {
+			if (walk_func(name_copy) < 0) {
+				free(name_copy);
+				return -1;
+			}
+		}
+		*q = '/';
+	}
+	free(name_copy);
+	return 0;
+}
+
+ngx_fd_t
+ngx_open_file(const u_char *name, int mode, int create, int access)
+{
+	int open_mode = mode | create;
+	const char *cname = (const char*) name;
+
+	if ((!open_mode & NGX_FILE_SAFE) || ngx_walk_path_down(cname, check_symlink_permissions))
+		return open(cname, open_mode & NGX_FILE_OPEN_MASK, access);
+
+	errno = NGX_EACCES;
+	return -1;
+}
 
 ssize_t
 ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)

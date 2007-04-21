@@ -1049,12 +1049,14 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     }
 
     switch (op) {
+    case ngx_http_script_file_plain_pi:
     case ngx_http_script_file_plain:
         if (ngx_is_file(&fi)) {
              goto true;
         }
         goto false;
 
+    case ngx_http_script_file_not_plain_pi:
     case ngx_http_script_file_not_plain:
         if (ngx_is_file(&fi)) {
             goto false;
@@ -1073,12 +1075,14 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
         }
         goto true;
 
+    case ngx_http_script_file_exists_pi:
     case ngx_http_script_file_exists:
         if (ngx_is_file(&fi) || ngx_is_dir(&fi) || ngx_is_link(&fi)) {
              goto true;
         }
         goto false;
 
+    case ngx_http_script_file_not_exists_pi:
     case ngx_http_script_file_not_exists:
         if (ngx_is_file(&fi) || ngx_is_dir(&fi) || ngx_is_link(&fi)) {
             goto false;
@@ -1087,20 +1091,24 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
 
 #if (NGX_WIN32)
 
+    case ngx_http_script_file_exec_pi:
     case ngx_http_script_file_exec:
         goto false;
 
+    case ngx_http_script_file_not_exec_pi:
     case ngx_http_script_file_not_exec:
         goto true;
 
 #else
 
+    case ngx_http_script_file_exec_pi:
     case ngx_http_script_file_exec:
         if (ngx_is_exec(&fi)) {
              goto true;
         }
         goto false;
 
+    case ngx_http_script_file_not_exec_pi:
     case ngx_http_script_file_not_exec:
         if (ngx_is_exec(&fi)) {
             goto false;
@@ -1108,8 +1116,6 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
         goto true;
 
 #endif
-    default:
-        goto false;
     }
 
 false:

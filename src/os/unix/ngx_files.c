@@ -38,7 +38,7 @@ ngx_walk_path_down(const char *name, void *arg, int(*walk_func)(const char*, voi
 	char *q = name_copy;
 
 	while ((q = strchr(p, '/'))) {
-		p = q;
+		p = q + 1;
 		*q = 0;
 		if (q != name_copy) {
 			if (walk_func(name_copy, arg) < 0) {
@@ -48,7 +48,10 @@ ngx_walk_path_down(const char *name, void *arg, int(*walk_func)(const char*, voi
 		}
 		*q = '/';
 	}
+
 	free(name_copy);
+	if (walk_func(name, arg) < 0)
+		return -1;
 	return 0;
 }
 
@@ -58,10 +61,9 @@ ngx_open_file(const u_char *name, int mode, int create, int access)
 	int open_mode = mode | create;
 	const char *cname = (const char*) name;
 
-	if ((!open_mode & NGX_FILE_SAFE) || ngx_walk_path_down(cname, NULL, check_symlink_permissions))
+	if ((!(open_mode & NGX_FILE_SAFE)) || (ngx_walk_path_down(cname, NULL, check_symlink_permissions) == 0))
 		return open(cname, open_mode & NGX_FILE_OPEN_MASK, access);
 
-	errno = NGX_EACCES;
 	return -1;
 }
 

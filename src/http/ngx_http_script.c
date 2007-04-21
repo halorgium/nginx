@@ -948,6 +948,19 @@ ngx_http_script_not_equal_code(ngx_http_script_engine_t *e)
     *res = ngx_http_variable_true_value;
 }
 
+static int
+ngx_http_script_stat_pi(const char *name, void *v_fi)
+{
+	ngx_file_info_t tmp_fi;
+	ngx_file_info_t *fi = (ngx_file_info_t *) v_fi;
+
+	if (ngx_file_info(name, &tmp_fi) < 0) {
+		return -1;
+	}
+
+	*fi = tmp_fi;
+	return 0;
+}
 
 void
 ngx_http_script_file_code(ngx_http_script_engine_t *e)
@@ -956,6 +969,7 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     ngx_file_info_t               fi;
     ngx_http_variable_value_t    *value;
     ngx_http_script_file_code_t  *code;
+    ngx_http_script_file_op_e     op;
 
     value = e->sp - 1;
 
@@ -965,15 +979,18 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
                    "http script file op %p", code->op);
 
+    op = code->op;
+
     if (ngx_file_info(value->data, &fi) == -1) {
         err = ngx_errno;
+	int negated = 0;
 
         if (err != NGX_ENOENT && err != NGX_ENOTDIR) {
             ngx_log_error(NGX_LOG_CRIT, e->request->connection->log, err,
                           ngx_file_info_n " \"%s\" failed", value->data);
         }
 
-        switch (code->op) {
+        switch (op) {
 
         case ngx_http_script_file_plain:
         case ngx_http_script_file_dir:
@@ -986,12 +1003,52 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
         case ngx_http_script_file_not_exists:
         case ngx_http_script_file_not_exec:
              goto true;
-        }
 
-        goto false;
+	case ngx_http_script_file_not_exists_pi:
+	     if (err == NGX_ENOENT)
+	        goto true;
+	     else
+	        goto false;
+
+	case ngx_http_script_file_exists_pi:
+	     if (err == NGX_ENOTDIR)
+	        goto true;
+	     else
+	        goto false;
+
+	case ngx_http_script_file_not_plain_pi:
+	case ngx_http_script_file_not_exec_pi:
+	     negated = 1;
+	     /* FALLTHRU */
+
+	case ngx_http_script_file_plain_pi:
+	case ngx_http_script_file_exec_pi:
+	     if (err == NGX_ENOENT) {
+	        if (negated)
+			goto true;
+		else
+			goto false;
+	     }
+
+	     ngx_walk_path_down((const char*)value->data, (void*) &fi, ngx_http_script_stat_pi);
+	}
+
+	switch (op) {
+	case ngx_http_script_file_plain_pi:
+	     op = ngx_http_script_file_plain; break;
+	case ngx_http_script_file_not_plain_pi:
+	     op = ngx_http_script_file_not_plain; break;
+	case ngx_http_script_file_exec_pi:
+	     op = ngx_http_script_file_exec; break;
+	case ngx_http_script_file_not_exec_pi:
+	     op = ngx_http_script_file_not_exec; break;
+	default:
+	     goto false;
+	}
+
     }
 
-    switch (code->op) {
+    switch (op) {
     case ngx_http_script_file_plain:
         if (ngx_is_file(&fi)) {
              goto true;
@@ -1051,6 +1108,8 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
         goto true;
 
 #endif
+    default:
+        goto false;
     }
 
 false:

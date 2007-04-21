@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 static int
-check_symlink_permissions(const char *name)
+check_symlink_permissions(const char *name, void *arg)
 {
 	struct stat sb;
 	uid_t link_uid;
@@ -30,8 +30,8 @@ check_symlink_permissions(const char *name)
 	return -1;
 }
 
-static int
-ngx_walk_path_down(const char *name, int(*walk_func)(const char*))
+int
+ngx_walk_path_down(const char *name, void *arg, int(*walk_func)(const char*, void *))
 {
 	char *name_copy = strdup(name);
 	char *p = name_copy;
@@ -41,7 +41,7 @@ ngx_walk_path_down(const char *name, int(*walk_func)(const char*))
 		p = q;
 		*q = 0;
 		if (q != name_copy) {
-			if (walk_func(name_copy) < 0) {
+			if (walk_func(name_copy, arg) < 0) {
 				free(name_copy);
 				return -1;
 			}
@@ -58,7 +58,7 @@ ngx_open_file(const u_char *name, int mode, int create, int access)
 	int open_mode = mode | create;
 	const char *cname = (const char*) name;
 
-	if ((!open_mode & NGX_FILE_SAFE) || ngx_walk_path_down(cname, check_symlink_permissions))
+	if ((!open_mode & NGX_FILE_SAFE) || ngx_walk_path_down(cname, NULL, check_symlink_permissions))
 		return open(cname, open_mode & NGX_FILE_OPEN_MASK, access);
 
 	errno = NGX_EACCES;

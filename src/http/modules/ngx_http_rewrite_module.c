@@ -141,6 +141,9 @@ static struct ngx_rewrite_file_op_map_t {
 	{ 'd', ngx_http_script_file_dir, ngx_http_script_file_not_dir },
 	{ 'e', ngx_http_script_file_exists, ngx_http_script_file_not_exists },
 	{ 'x', ngx_http_script_file_exec, ngx_http_script_file_not_exec },
+	{ 'F', ngx_http_script_file_plain_pi, ngx_http_script_file_not_plain_pi },
+	{ 'E', ngx_http_script_file_exists_pi, ngx_http_script_file_not_exists_pi },
+	{ 'X', ngx_http_script_file_exec_pi, ngx_http_script_file_not_exec_pi },
 	{ 0, -1, -1 }
 };
 

@@ -146,7 +146,13 @@ typedef enum {
     ngx_http_script_file_exists,
     ngx_http_script_file_not_exists,
     ngx_http_script_file_exec,
-    ngx_http_script_file_not_exec
+    ngx_http_script_file_not_exec,
+    ngx_http_script_file_plain_pi,
+    ngx_http_script_file_not_plain_pi,
+    ngx_http_script_file_exists_pi,
+    ngx_http_script_file_not_exists_pi,
+    ngx_http_script_file_exec_pi,
+    ngx_http_script_file_not_exec_pi
 } ngx_http_script_file_op_e;
 
 

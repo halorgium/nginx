@@ -165,5 +165,6 @@ ngx_err_t ngx_unlock_fd(ngx_fd_t fd);
 #define ngx_lock_fd_n            "fcntl(F_SETLKW, F_WRLCK)"
 #define ngx_unlock_fd_n          "fcntl(F_SETLK, F_UNLCK)"
 
+int ngx_walk_path_down(const char *name, void *arg, int(*walk_func)(const char*, void *));
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

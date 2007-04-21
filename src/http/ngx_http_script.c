@@ -1103,14 +1103,14 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
 
     case ngx_http_script_file_exec_pi:
     case ngx_http_script_file_exec:
-        if (ngx_is_exec(&fi)) {
+        if (ngx_is_exec(&fi) && !ngx_is_dir(&fi)) {
              goto true;
         }
         goto false;
 
     case ngx_http_script_file_not_exec_pi:
     case ngx_http_script_file_not_exec:
-        if (ngx_is_exec(&fi)) {
+        if (ngx_is_exec(&fi) && !ngx_is_dir(&fi)) {
             goto false;
         }
         goto true;

@@ -1020,6 +1020,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 ch = *p;
             }
 
+            ctx->state = state;
             ctx->pos = p;
             ctx->looked = looked;
             ctx->copy_end = p;
@@ -2376,7 +2377,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         p++;
     }
 
-    if (p < last && *p == '/') {
+    if (p < last - 1 && *p == '/') {
         if (*(last - 1) != '/') {
             goto invalid_expression;
         }

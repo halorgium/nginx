@@ -223,7 +223,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     size = limit - send;
 
                     aligned = (cl->buf->file_pos + size + ngx_pagesize - 1)
-                                                      & ~(ngx_pagesize - 1);
+                               & ~((off_t) ngx_pagesize - 1);
 
                     if (aligned <= cl->buf->file_last) {
                         size = aligned - cl->buf->file_pos;
@@ -254,6 +254,10 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 #else
             offset = (int32_t) file->file_pos;
 #endif
+
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "sendfile: @%O %uz", file->file_pos, file_size);
+
             rc = sendfile(c->fd, file->file->fd, &offset, file_size);
 
             if (rc == -1) {

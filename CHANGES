@@ -1,4 +1,106 @@
 
+Changes with nginx 0.5.26                                        17 Jun 2007
+
+    *) Bugfix: in SSI parsing.
+
+
+Changes with nginx 0.5.25                                        11 Jun 2007
+
+    *) Bugfix: nginx could not be built with the 
+       --without-http_rewrite_module parameter; bug appeared in 0.5.24.
+
+
+Changes with nginx 0.5.24                                        06 Jun 2007
+
+    *) Security: the "ssl_verify_client" directive did not work if request 
+       was made using HTTP/0.9.
+
+    *) Bugfix: a part of response body might be passed uncompressed if gzip 
+       was used; bug appeared in 0.5.23.
+
+
+Changes with nginx 0.5.23                                        04 Jun 2007
+
+    *) Feature: the ngx_http_ssl_module supports Server Name Indication TLS 
+       extension.
+
+    *) Feature: the "fastcgi_catch_stderr" directive.
+       Thanks to Nick S. Grechukh, OWOX project.
+
+    *) Bugfix: a segmentation fault occurred in master process if two 
+       virtual servers should bind() to the overlapping ports.
+
+    *) Bugfix: if nginx was built with ngx_http_perl_module and perl 
+       supported threads, then during second reconfiguration the error 
+       messages "panic: MUTEX_LOCK" and "perl_parse() failed" were issued.
+
+    *) Bugfix: in the HTTPS protocol in the "proxy_pass" directive.
+
+
+Changes with nginx 0.5.22                                        29 May 2007
+
+    *) Bugfix: a big request body might not be passed to backend; bug 
+       appeared in 0.5.21.
+
+
+Changes with nginx 0.5.21                                        28 May 2007
+
+    *) Bugfix: if server has more than about ten locations, then regex 
+       locations might be choosen not in that order as they were specified.
+
+    *) Bugfix: a worker process may got caught in an endless loop on 64-bit 
+       platform, if the 33-rd or next in succession backend has failed.
+       Thanks to Anton Povarov.
+
+    *) Bugfix: a bus error might occur on Solaris/sparc64 if the PCRE 
+       library was used.
+       Thanks to Andrei Nigmatulin.
+
+    *) Bugfix: in the HTTPS protocol in the "proxy_pass" directive.
+
+
+Changes with nginx 0.5.20                                        07 May 2007
+
+    *) Feature: the "sendfile_max_chunk" directive.
+
+    *) Feature: the "$http_...", "$sent_http_...", and "$upstream_http_..." 
+       variables may be changed using the "set" directive.
+
+    *) Bugfix: a segmentation fault might occur in worker process if the 
+       SSI command 'if expr="$var = /"' was used.
+
+    *) Bugfix: trailing boundary of multipart range response was 
+       transferred incorrectly.
+       Thanks to Evan Miller.
+
+    *) Bugfix: nginx did not work on Solaris/sparc64 if it was built by Sun 
+       Studio.
+       Thanks to Andrei Nigmatulin.
+
+    *) Bugfix: the ngx_http_perl_module could not built by Solaris make.
+       Thanks to Andrei Nigmatulin.
+
+
+Changes with nginx 0.5.19                                        24 Apr 2007
+
+    *) Change: now the $request_time variable has millisecond precision.
+
+    *) Change: the method $r->rflush of ngx_http_perl_module was renamed to 
+       the $r->flush.
+
+    *) Feature: the $upstream_addr variable.
+
+    *) Feature: the "proxy_headers_hash_max_size" and 
+       "proxy_headers_hash_bucket_size" directives.
+       Thanks to Volodymyr Kostyrko.
+
+    *) Bugfix: the files more than 2G could not be transferred using 
+       sendfile and limit_rate on 64-bit platforms.
+
+    *) Bugfix: the files more than 2G could not be transferred using 
+       sendfile on 64-bit Linux.
+
+
 Changes with nginx 0.5.18                                        19 Apr 2007
 
     *) Feature: the ngx_http_sub_filter_module.

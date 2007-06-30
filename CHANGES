@@ -1,4 +1,9 @@
 
+Changes with nginx 0.5.26                                        17 Jun 2007
+
+    *) Bugfix: in SSI parsing.
+
+
 Changes with nginx 0.5.25                                        11 Jun 2007
 
     *) Bugfix: nginx could not be built with the 

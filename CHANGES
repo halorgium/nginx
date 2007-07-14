@@ -1,4 +1,13 @@
 
+Changes with nginx 0.5.27                                        09 Jul 2007
+
+    *) Bugfix: if remote SSI subrequest was used, then posterior local file 
+       subrequest might transferred to client in wrong order.
+
+    *) Bugfix: large SSI inclusions buffered in temporary files were 
+       truncated.
+
+
 Changes with nginx 0.5.26                                        17 Jun 2007
 
     *) Bugfix: in SSI parsing.

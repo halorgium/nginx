@@ -304,6 +304,10 @@ ngx_http_auth_basic_crypt_handler(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_auth_basic_set_realm(ngx_http_request_t *r, ngx_str_t *realm)
 {
+    if (r->headers_out.www_authenticate) {
+        return NGX_HTTP_UNAUTHORIZED;
+    }
+
     r->headers_out.www_authenticate = ngx_list_push(&r->headers_out.headers);
     if (r->headers_out.www_authenticate == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;

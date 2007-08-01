@@ -3,10 +3,12 @@
 set -e
 
 ./configure \
-	--prefix=/usr/local/nginx \
+	--prefix=/var/nginx \
+	--sbin-path=/usr/local/sbin \
+	--conf-path=/etc/nginx/nginx.conf \
 	--user=nginx \
 	--group=nginx \
-	--with-http_ssl_module
+	--with-http_ssl_module \
 
 make
 

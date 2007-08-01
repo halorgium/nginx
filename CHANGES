@@ -1,4 +1,25 @@
 
+Changes with nginx 0.5.30                                        30 Jul 2007
+
+    *) Feature: the $args variable can be set with the "set" directive.
+
+    *) Feature: the $is_args variable.
+
+    *) Bugfix: if a client has closed connection to mail proxy then nginx 
+       might not close connection to backend.
+
+    *) Bugfix: now nginx escapes space in $memcached_key variable.
+
+    *) Bugfix: a segmentation fault might occur in worker process when the 
+       HTTPS protocol was used in the "proxy_pass" directive.
+
+    *) Bugfix: the perl $$ variable value in ngx_http_perl_module was equal 
+       to the master process identification number.
+
+    *) Bugfix: fix building on Solaris/amd64 by Sun Studio 11 and early 
+       versions; bug appeared in 0.5.29.
+
+
 Changes with nginx 0.5.29                                        23 Jul 2007
 
     *) Feature: $nginx_version variable.

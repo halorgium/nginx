@@ -1,4 +1,57 @@
 
+Changes with nginx 0.5.30                                        30 Jul 2007
+
+    *) Feature: the $args variable can be set with the "set" directive.
+
+    *) Feature: the $is_args variable.
+
+    *) Bugfix: if a client has closed connection to mail proxy then nginx 
+       might not close connection to backend.
+
+    *) Bugfix: now nginx escapes space in $memcached_key variable.
+
+    *) Bugfix: a segmentation fault might occur in worker process when the 
+       HTTPS protocol was used in the "proxy_pass" directive.
+
+    *) Bugfix: the perl $$ variable value in ngx_http_perl_module was equal 
+       to the master process identification number.
+
+    *) Bugfix: fix building on Solaris/amd64 by Sun Studio 11 and early 
+       versions; bug appeared in 0.5.29.
+
+
+Changes with nginx 0.5.29                                        23 Jul 2007
+
+    *) Feature: $nginx_version variable.
+       Thanks to Nick S. Grechukh.
+
+    *) Bugfix: if the FastCGI header was split in records, then nginx 
+       passed garbage in the header to a client.
+
+    *) Bugfix: Sun Studio compatibility on Solaris/amd64 and 
+       Solaris/sparc64.
+       Thanks to Jiang Hong and Andrei Nigmatulin.
+
+    *) Bugfix: of minor potential bugs.
+       Thanks to Coverity's Scan.
+
+
+Changes with nginx 0.5.28                                        17 Jul 2007
+
+    *) Security: the "msie_refresh" directive allowed XSS.
+       Thanks to Maxim Boguk.
+
+    *) Bugfix: a segmentation fault might occur in worker process if the 
+       "auth_http_header" directive was used.
+       Thanks to Maxim Dounin.
+
+    *) Bugfix: a segmentation fault occurred in worker process if the 
+       CRAM-MD5 authentication method was used, but it was not enabled.
+
+    *) Bugfix: a segmentation fault might occur in worker process if the 
+       eventport method was used.
+
+
 Changes with nginx 0.5.27                                        09 Jul 2007
 
     *) Bugfix: if remote SSI subrequest was used, then posterior local file 
@@ -215,7 +268,7 @@ Changes with nginx 0.5.13                                        19 Feb 2007
        send timeout only.
 
     *) Bugfix: nginx could not be built on platforms different from i386, 
-       amd64, sparc É ppc; bug appeared in 0.5.8.
+       amd64, sparc and ppc; bug appeared in 0.5.8.
 
 
 Changes with nginx 0.5.12                                        12 Feb 2007

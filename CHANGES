@@ -1,7 +1,24 @@
 
-Changes with nginx 0.5.28                                        17 Jun 2007
+Changes with nginx 0.5.29                                        23 Jul 2007
+
+    *) Feature: $nginx_version variable.
+       Thanks to Nick S. Grechukh.
+
+    *) Bugfix: if the FastCGI header was split in records, then nginx 
+       passed garbage in the header to a client.
+
+    *) Bugfix: Sun Studio compatibility on Solaris/amd64 and 
+       Solaris/sparc64.
+       Thanks to Jiang Hong and Andrei Nigmatulin.
+
+    *) Bugfix: of minor potential bugs.
+       Thanks to Coverity's Scan.
+
+
+Changes with nginx 0.5.28                                        17 Jul 2007
 
     *) Security: the "msie_refresh" directive allowed XSS.
+       Thanks to Maxim Boguk.
 
     *) Bugfix: a segmentation fault might occur in worker process if the 
        "auth_http_header" directive was used.

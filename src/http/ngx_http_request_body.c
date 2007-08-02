@@ -442,11 +442,11 @@ ngx_http_discard_body(ngx_http_request_t *r)
         ngx_del_timer(rev);
     }
 
-    r->discard_body = 1;
-
     if (r->headers_in.content_length_n <= 0) {
         return NGX_OK;
     }
+
+    r->discard_body = 1;
 
     size = r->header_in->last - r->header_in->pos;
 
@@ -502,6 +502,12 @@ ngx_http_read_discarded_body(ngx_http_request_t *r)
                    "http read discarded body");
 
     if (r->headers_in.content_length_n == 0) {
+
+        if (r->done) {
+            r->discard_body = 0;
+            ngx_http_finalize_request(r, 0);
+        }
+
         return NGX_OK;
     }
 

@@ -1,4 +1,14 @@
 
+Changes with nginx 0.5.31                                        15 Aug 2007
+
+    *) Feature: named locations.
+
+    *) Feature: the "proxy_store" and "fastcgi_store" directives.
+
+    *) Feature: the "proxy_store_access" and "fastcgi_store_access" 
+       directives.
+
+
 Changes with nginx 0.5.30                                        30 Jul 2007
 
     *) Feature: the $args variable can be set with the "set" directive.

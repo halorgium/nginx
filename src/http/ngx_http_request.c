@@ -1657,10 +1657,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->discard_body) {
-        return;
-    }
-
     if (r->connection->buffered) {
         (void) ngx_http_set_write_handler(r);
         return;

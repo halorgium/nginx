@@ -64,7 +64,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     if (us->port == 0 && us->default_port == 0) {
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                       "no port in upstream \"%V\" in %s:%ui",
-                      &us->host, us->file_name.data, us->line);
+                      &us->host, us->file_name, us->line);
         return NGX_ERROR;
     }
 
@@ -77,7 +77,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         if (u.err) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "%s in upstream \"%V\" in %s:%ui",
-                          u.err, &us->host, us->file_name.data, us->line);
+                          u.err, &us->host, us->file_name, us->line);
         }
 
         return NGX_ERROR;
@@ -428,8 +428,8 @@ ngx_http_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
     rc = ngx_ssl_set_session(pc->connection, ssl_session);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                  "set session: %p:%d",
-                  ssl_session, ssl_session ? ssl_session->references : 0);
+                   "set session: %p:%d",
+                   ssl_session, ssl_session ? ssl_session->references : 0);
 
     /* ngx_unlock_mutex(rrp->peers->mutex); */
 
@@ -453,7 +453,7 @@ ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                  "save session: %p:%d", ssl_session, ssl_session->references);
+                   "save session: %p:%d", ssl_session, ssl_session->references);
 
     peer = &rrp->peers->peer[rrp->current];
 
@@ -468,7 +468,7 @@ ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     if (old_ssl_session) {
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                      "old session: %p:%d",
+                       "old session: %p:%d",
                        old_ssl_session, old_ssl_session->references);
 
         /* TODO: may block */

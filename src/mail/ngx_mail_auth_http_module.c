@@ -21,6 +21,9 @@ typedef struct {
     ngx_str_t                       header;
 
     ngx_array_t                    *headers;
+
+    u_char                         *file;
+    ngx_uint_t                      line;
 } ngx_mail_auth_http_conf_t;
 
 
@@ -1248,18 +1251,10 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
 static ngx_int_t
 ngx_mail_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text, ngx_str_t *escaped)
 {
-    u_char      ch, *p;
-    ngx_uint_t  i, n;
+    u_char     *p;
+    uintptr_t   n;
 
-    n = 0;
-
-    for (i = 0; i < text->len; i++) {
-        ch = text->data[i];
-
-        if (ch == CR || ch == LF) {
-            n++;
-        }
-    }
+    n = ngx_escape_uri(NULL, text->data, text->len, NGX_ESCAPE_MAIL_AUTH);
 
     if (n == 0) {
         *escaped = *text;
@@ -1273,27 +1268,9 @@ ngx_mail_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text, ngx_str_t *escaped)
         return NGX_ERROR;
     }
 
+    (void) ngx_escape_uri(p, text->data, text->len, NGX_ESCAPE_MAIL_AUTH);
+
     escaped->data = p;
-
-    for (i = 0; i < text->len; i++) {
-        ch = text->data[i];
-
-        if (ch == CR) {
-            *p++ = '%';
-            *p++ = '0';
-            *p++ = 'D';
-            continue;
-        }
-
-        if (ch == LF) {
-            *p++ = '%';
-            *p++ = '0';
-            *p++ = 'A';
-            continue;
-        }
-
-        *p++ = ch;
-    }
 
     return NGX_OK;
 }
@@ -1310,6 +1287,9 @@ ngx_mail_auth_http_create_conf(ngx_conf_t *cf)
     }
 
     ahcf->timeout = NGX_CONF_UNSET_MSEC;
+
+    ahcf->file = cf->conf_file->file.name.data;
+    ahcf->line = cf->conf_file->line;
 
     return ahcf;
 }
@@ -1330,6 +1310,14 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->peer = prev->peer;
         conf->host_header = prev->host_header;
         conf->uri = prev->uri;
+
+        if (conf->peer == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"http_auth\" is defined for server in %s:%ui",
+                          conf->file, conf->line);
+
+            return NGX_CONF_ERROR;
+        }
     }
 
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
@@ -1383,11 +1371,18 @@ ngx_mail_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.uri_part = 1;
     u.one_addr = 1;
 
+    if (ngx_strncmp(u.url.data, "http://", 7) == 0) {
+        u.url.len -= 7;
+        u.url.data += 7;
+    }
+
     if (ngx_parse_url(cf, &u) != NGX_OK) {
         if (u.err) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "%s in auth_http \"%V\"", u.err, &u.url);
         }
+
+        return NGX_CONF_ERROR;
     }
 
     ahcf->peer = u.addrs;

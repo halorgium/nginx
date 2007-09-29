@@ -1,4 +1,71 @@
 
+Changes with nginx 0.5.32                                        24 Sep 2007
+
+    *) Change: now nginx tries to set the "worker_priority", 
+       "worker_rlimit_nofile", "worker_rlimit_core", and 
+       "worker_rlimit_sigpending" without super-user privileges.
+
+    *) Change: now nginx escapes space and "%" in request to a mail proxy 
+       authentication server.
+
+    *) Change: now nginx escapes "%" in $memcached_key variable.
+
+    *) Change: the special make target "upgrade1" was defined for online 
+       upgrade of 0.1.x versions.
+
+    *) Feature: the "add_header Last-Modified ..." directive changes the 
+       "Last-Modified" response header line.
+
+    *) Feature: the mail proxy supports AUTHENTICATE in IMAP mode.
+       Thanks to Maxim Dounin.
+
+    *) Feature: the mail proxy supports STARTTLS in SMTP mode.
+       Thanks to Maxim Dounin.
+
+    *) Bugfix: nginx did not close directory file on HEAD request if 
+       autoindex was used.
+       Thanks to Arkadiusz Patyk.
+
+    *) Bugfix: the "proxy_hide_header" and "fastcgi_hide_header" directives 
+       did not hide response header lines whose name was longer than 32 
+       characters.
+       Thanks to Manlio Perillo.
+
+    *) Bugfix: active connection counter always increased if mail proxy was 
+       used.
+
+    *) Bugfix: if backend returned response header only using non-buffered 
+       proxy, then nginx closed backend connection on timeout.
+
+    *) Bugfix: nginx did not support several "Connection" request header 
+       lines.
+
+    *) Bugfix: a charset set by the "charset" directive was not appended to 
+       the "Content-Type" header set by $r->send_http_header().
+
+    *) Bugfix: a segmentation fault might occur in worker process if 
+       /dev/poll method was used.
+
+    *) Bugfix: nginx did not work on FreeBSD/sparc64.
+
+    *) Bugfix: a segmentation fault occurred in worker process if invalid 
+       address was set in the "auth_http" directive.
+
+    *) Bugfix: now nginx uses default listen backlog value 511 on all 
+       platforms except FreeBSD.
+       Thanks to Jiang Hong.
+
+    *) Bugfix: now Solaris sendfilev() is not used to transfer the client 
+       request body to FastCGI-server via the unix domain socket.
+
+    *) Bugfix: if the same host without specified port was used as backend 
+       for HTTP and HTTPS, then nginx used only one port - 80 or 443.
+
+    *) Bugfix: the "proxy_ignore_client_abort" and 
+       "fastcgi_ignore_client_abort" directives did not work; bug appeared 
+       in 0.5.13.
+
+
 Changes with nginx 0.5.31                                        15 Aug 2007
 
     *) Feature: named locations.

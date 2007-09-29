@@ -553,7 +553,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     } else {
         unparsed_uri = 0;
-        if (r->quoted_uri) {
+        if (r->quoted_uri || r->internal) {
             escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
                                         r->uri.len - loc_len, NGX_ESCAPE_URI);
         }
@@ -1141,7 +1141,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
             } else {
                 for (i = 0; i < h->key.len; i++) {
-                    h->lowcase_key[i] = ngx_tolower(h->lowcase_key[i]);
+                    h->lowcase_key[i] = ngx_tolower(h->key.data[i]);
                 }
             }
 
@@ -2237,6 +2237,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (port == 80) {
                 plcf->port.len = sizeof("80") - 1;
                 plcf->port.data = (u_char *) "80";
+
             } else {
                 plcf->port.len = sizeof("443") - 1;
                 plcf->port.data = (u_char *) "443";

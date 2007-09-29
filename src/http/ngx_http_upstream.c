@@ -581,7 +581,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->write->handler = ngx_http_upstream_send_request_handler;
     c->read->handler = ngx_http_upstream_process_header;
 
-    c->sendfile = r->connection->sendfile;
+    c->sendfile &= r->connection->sendfile;
 
     c->pool = r->pool;
     c->read->log = c->write->log = c->log = r->connection->log;
@@ -1288,6 +1288,7 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
         if (c->write->pending_eof) {
+            c->log->action = "connecting to upstream";
             (void) ngx_connection_error(c, c->write->kq_errno,
                                     "kevent() reported that connect() failed");
             return NGX_ERROR;
@@ -1311,6 +1312,7 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
         }
 
         if (err) {
+            c->log->action = "connecting to upstream";
             (void) ngx_connection_error(c, err, "connect() failed");
             return NGX_ERROR;
         }
@@ -1487,6 +1489,11 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             if (ngx_http_send_special(r, NGX_HTTP_FLUSH) == NGX_ERROR) {
                 ngx_http_upstream_finalize_request(r, u, 0);
                 return;
+            }
+
+            if (u->peer.connection->read->ready) {
+                ngx_http_upstream_process_non_buffered_body(
+                                                     u->peer.connection->read);
             }
         }
 
@@ -3201,11 +3208,17 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
             ngx_log_error(NGX_LOG_WARN, cf->log, 0,
                           "upstream \"%V\" may not have port %d in %s:%ui",
                           &u->host, uscfp[i]->port,
-                          uscfp[i]->file_name.data, uscfp[i]->line);
+                          uscfp[i]->file_name, uscfp[i]->line);
             return NULL;
         }
 
         if (uscfp[i]->port != u->port) {
+            continue;
+        }
+
+        if (uscfp[i]->default_port && u->default_port
+            && uscfp[i]->default_port != u->default_port)
+        {
             continue;
         }
 
@@ -3219,7 +3232,7 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
 
     uscf->flags = flags;
     uscf->host = u->host;
-    uscf->file_name = cf->conf_file->file.name;
+    uscf->file_name = cf->conf_file->file.name.data;
     uscf->line = cf->conf_file->line;
     uscf->port = u->port;
     uscf->default_port = u->default_port;

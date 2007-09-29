@@ -62,6 +62,11 @@ u_long         cpu_affinity;
 static u_char  master_process[] = "master process";
 
 
+static ngx_cycle_t      ngx_exit_cycle;
+static ngx_log_t        ngx_exit_log;
+static ngx_open_file_t  ngx_exit_log_file;
+
+
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
@@ -649,13 +654,21 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     }
 
     /*
-     * we do not destroy cycle->pool here because a signal handler
-     * that uses cycle->log can be called at this point
+     * Copy ngx_cycle->log related data to the special static exit cycle,
+     * log, and log file structures enough to allow a signal handler to log.
+     * The handler may be called when standard ngx_cycle->log allocated from
+     * ngx_cycle->pool is already destroyed.
      */
 
-#if 0
+    ngx_exit_log_file.fd = ngx_cycle->log->file->fd;
+
+    ngx_exit_log = *ngx_cycle->log;
+    ngx_exit_log.file = &ngx_exit_log_file;
+
+    ngx_exit_cycle.log = &ngx_exit_log;
+    ngx_cycle = &ngx_exit_cycle;
+
     ngx_destroy_pool(cycle->pool);
-#endif
 
     exit(0);
 }
@@ -792,49 +805,49 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (geteuid() == 0) {
-        if (priority && ccf->priority != 0) {
-            if (setpriority(PRIO_PROCESS, 0, ccf->priority) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                              "setpriority(%d) failed", ccf->priority);
-            }
+    if (priority && ccf->priority != 0) {
+        if (setpriority(PRIO_PROCESS, 0, ccf->priority) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "setpriority(%d) failed", ccf->priority);
         }
+    }
 
-        if (ccf->rlimit_nofile != NGX_CONF_UNSET) {
-            rlmt.rlim_cur = (rlim_t) ccf->rlimit_nofile;
-            rlmt.rlim_max = (rlim_t) ccf->rlimit_nofile;
+    if (ccf->rlimit_nofile != NGX_CONF_UNSET) {
+        rlmt.rlim_cur = (rlim_t) ccf->rlimit_nofile;
+        rlmt.rlim_max = (rlim_t) ccf->rlimit_nofile;
 
-            if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                              "setrlimit(RLIMIT_NOFILE, %i) failed",
-                              ccf->rlimit_nofile);
-            }
+        if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "setrlimit(RLIMIT_NOFILE, %i) failed",
+                          ccf->rlimit_nofile);
         }
+    }
 
-        if (ccf->rlimit_core != NGX_CONF_UNSET_SIZE) {
-            rlmt.rlim_cur = (rlim_t) ccf->rlimit_core;
-            rlmt.rlim_max = (rlim_t) ccf->rlimit_core;
+    if (ccf->rlimit_core != NGX_CONF_UNSET_SIZE) {
+        rlmt.rlim_cur = (rlim_t) ccf->rlimit_core;
+        rlmt.rlim_max = (rlim_t) ccf->rlimit_core;
 
-            if (setrlimit(RLIMIT_CORE, &rlmt) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                              "setrlimit(RLIMIT_CORE, %i) failed",
-                              ccf->rlimit_core);
-            }
+        if (setrlimit(RLIMIT_CORE, &rlmt) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "setrlimit(RLIMIT_CORE, %i) failed",
+                          ccf->rlimit_core);
         }
+    }
 
 #ifdef RLIMIT_SIGPENDING
-        if (ccf->rlimit_sigpending != NGX_CONF_UNSET) {
-            rlmt.rlim_cur = (rlim_t) ccf->rlimit_sigpending;
-            rlmt.rlim_max = (rlim_t) ccf->rlimit_sigpending;
+    if (ccf->rlimit_sigpending != NGX_CONF_UNSET) {
+        rlmt.rlim_cur = (rlim_t) ccf->rlimit_sigpending;
+        rlmt.rlim_max = (rlim_t) ccf->rlimit_sigpending;
 
-            if (setrlimit(RLIMIT_SIGPENDING, &rlmt) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                              "setrlimit(RLIMIT_SIGPENDING, %i) failed",
-                              ccf->rlimit_sigpending);
-            }
+        if (setrlimit(RLIMIT_SIGPENDING, &rlmt) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "setrlimit(RLIMIT_SIGPENDING, %i) failed",
+                          ccf->rlimit_sigpending);
         }
+    }
 #endif
 
+    if (geteuid() == 0) {
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setgid(%d) failed", ccf->group);
@@ -996,13 +1009,23 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     }
 
     /*
-     * we do not destroy cycle->pool here because a signal handler
-     * that uses cycle->log can be called at this point
+     * Copy ngx_cycle->log related data to the special static exit cycle,
+     * log, and log file structures enough to allow a signal handler to log.
+     * The handler may be called when standard ngx_cycle->log allocated from
+     * ngx_cycle->pool is already destroyed.
      */
 
-#if 0
+    ngx_exit_log_file.fd = ngx_cycle->log->file->fd;
+
+    ngx_exit_log = *ngx_cycle->log;
+    ngx_exit_log.file = &ngx_exit_log_file;
+
+    ngx_exit_cycle.log = &ngx_exit_log;
+    ngx_cycle = &ngx_exit_cycle;
+
     ngx_destroy_pool(cycle->pool);
-#endif
+
+    ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0, "exit");
 
     exit(0);
 }

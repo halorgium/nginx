@@ -21,6 +21,8 @@ static ngx_int_t ngx_http_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
@@ -34,6 +36,7 @@ static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
 
 static void ngx_http_block_read(ngx_http_request_t *r);
+static void ngx_http_test_read(ngx_http_request_t *r);
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
@@ -71,11 +74,11 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  ngx_http_process_unique_header_line },
 
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection),
-                 ngx_http_process_unique_header_line },
+                 ngx_http_process_connection },
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent),
                  ngx_http_process_header_line },
@@ -836,7 +839,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                   "client sent too long header line: \"%V\"",
                                   &header);
-                    ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+                    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                     return;
                 }
             }
@@ -948,7 +951,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client sent invalid header line: \"%V\\r...\"",
                       &header);
-        ngx_http_close_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return;
     }
 }
@@ -1199,6 +1202,21 @@ ngx_http_process_unique_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
+ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    if (ngx_strstr(h->value.data, "close")) {
+        r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
+
+    } else if (ngx_strstr(h->value.data, "keep-alive")) {
+        r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
@@ -1294,7 +1312,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->method & (NGX_HTTP_TRACE)) {
+    if (r->method & NGX_HTTP_TRACE) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent TRACE method");
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
@@ -1317,26 +1335,11 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->headers_in.connection) {
-        if (r->headers_in.connection->value.len == 5
-            && ngx_strcasecmp(r->headers_in.connection->value.data,
-                              (u_char *) "close")
-               == 0)
-        {
-            r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
-
-        } else if (r->headers_in.connection->value.len == 10
-                   && ngx_strcasecmp(r->headers_in.connection->value.data,
-                                     (u_char *) "keep-alive")
-                      == 0)
-        {
-            r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
-
-            if (r->headers_in.keep_alive) {
-                r->headers_in.keep_alive_n =
-                                ngx_atotm(r->headers_in.keep_alive->value.data,
-                                          r->headers_in.keep_alive->value.len);
-            }
+    if (r->headers_in.connection_type == NGX_HTTP_CONNECTION_KEEP_ALIVE) {
+        if (r->headers_in.keep_alive) {
+            r->headers_in.keep_alive_n =
+                            ngx_atotm(r->headers_in.keep_alive->value.data,
+                                      r->headers_in.keep_alive->value.len);
         }
     }
 
@@ -1710,7 +1713,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
-    r->read_event_handler = ngx_http_block_read;
+    r->read_event_handler = ngx_http_test_read;
     r->write_event_handler = ngx_http_writer;
 
     wev = r->connection->write;
@@ -1823,6 +1826,26 @@ ngx_http_writer(ngx_http_request_t *r)
 static void
 ngx_http_block_read(ngx_http_request_t *r)
 {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http read blocked");
+
+    /* aio does not call this handler */
+
+    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT)
+        && r->connection->read->active)
+    {
+        if (ngx_del_event(r->connection->read, NGX_READ_EVENT, 0)
+            == NGX_ERROR)
+        {
+            ngx_http_close_request(r, 0);
+        }
+    }
+}
+
+
+static void
+ngx_http_test_read(ngx_http_request_t *r)
+{
     int                n;
     char               buf[1];
     ngx_err_t          err;
@@ -1832,7 +1855,7 @@ ngx_http_block_read(ngx_http_request_t *r)
     c = r->connection;
     rev = c->read;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http read blocked");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http test read");
 
 #if (NGX_HAVE_KQUEUE)
 

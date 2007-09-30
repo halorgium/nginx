@@ -1589,6 +1589,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             }
         }
 
+        if (r->error_page) {
+            /* we have already been serving an error page, remember original code */
+            rc = r->err_status;
+        }
         ngx_http_finalize_request(r, ngx_http_special_response_handler(r, rc));
         return;
     }

@@ -6,6 +6,7 @@ set -e
 	--prefix=/var/nginx \
 	--sbin-path=/usr/local/sbin \
 	--conf-path=/etc/nginx/nginx.conf \
+	--pid-path=/var/run/nginx.pid \
 	--user=nginx \
 	--group=nginx \
 	--with-http_ssl_module \

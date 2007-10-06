@@ -23,7 +23,7 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}	\
 
 	test -d '`dirname "$NGX_SBIN_PATH"`' \
 		|| mkdir -p '`dirname "$NGX_SBIN_PATH"`'
-	test ! -f '$NGX_SBIN_PATH' || mv '$NGX_SBIN_PATH' '$NGX_SBIN_PATH.old'
+	test ! -f '$NGX_SBIN_PATH/nginx' || mv '$NGX_SBIN_PATH/nginx' '$NGX_SBIN_PATH/nginx.oldbin'
 	cp $NGX_OBJS/nginx '$NGX_SBIN_PATH'
 
 	test -d '$NGX_CONF_PREFIX' || mkdir -p '$NGX_CONF_PREFIX'

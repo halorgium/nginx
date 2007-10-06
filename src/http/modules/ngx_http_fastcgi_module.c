@@ -1958,8 +1958,21 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 peers:
 
     if (conf->upstream.upstream == NULL) {
+        ngx_http_core_loc_conf_t *clcf;
+
         conf->upstream.upstream = prev->upstream.upstream;
         conf->upstream.schema = prev->upstream.schema;
+
+        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+        if (conf->upstream.upstream) {
+            clcf->handler = ngx_http_fastcgi_handler;
+        }
+        if (clcf->name.data && clcf->name.len) {
+            conf->upstream.location = clcf->name;
+            if (clcf->name.data[clcf->name.len - 1] == '/') {
+                clcf->auto_redirect = 1;
+            }
+        }
     }
 
     if (conf->params_source == NULL) {

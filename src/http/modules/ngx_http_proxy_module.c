@@ -1876,11 +1876,36 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 peers:
 
     if (conf->upstream.upstream == NULL) {
+        ngx_http_core_loc_conf_t *clcf;
         conf->upstream.upstream = prev->upstream.upstream;
 
         conf->host_header = prev->host_header;
         conf->port = prev->port;
         conf->upstream.schema = prev->upstream.schema;
+
+        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+
+        if (conf->upstream.upstream) {
+            if ((clcf->named
+#if (NGX_PCRE)
+                || clcf->regex
+#endif
+                || clcf->noname) && conf->upstream.uri.len) {
+                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                        "inherited \"proxy_pass\" may not have URI part in "
+                                        "location given by regular expression, "
+                                        "or inside named location, "
+                                        "or inside the \"if\" statement, "
+                                        "or inside the \"limit_except\" block"); /* why? */
+                } else {
+                      clcf->handler = ngx_http_proxy_handler;
+                      conf->upstream.location = clcf->name;
+
+                      if (clcf->name.data[clcf->name.len - 1] == '/') {
+                          clcf->auto_redirect = 1;
+                }
+             }
+         }
     }
 
 

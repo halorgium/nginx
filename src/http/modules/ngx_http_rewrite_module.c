@@ -286,6 +286,7 @@ ngx_http_rewrite_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->stack_size, prev->stack_size, 10);
 
     if (conf->codes == NULL) {
+        conf->codes = prev->codes;
         return NGX_CONF_OK;
     }
 

@@ -593,6 +593,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     pclcf = pctx->loc_conf[ngx_http_core_module.ctx_index];
 
     clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
+    clcf->ctx = ctx;
     clcf->loc_conf = ctx->loc_conf;
     clcf->name = pclcf->name;
     clcf->noname = 1;

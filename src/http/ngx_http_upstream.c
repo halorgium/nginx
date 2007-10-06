@@ -2932,6 +2932,7 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_http_module_t             *module;
     ngx_http_conf_ctx_t           *ctx, *http_ctx;
     ngx_http_upstream_srv_conf_t  *uscf;
+    ngx_http_core_loc_conf_t      *clcf;
 
     ngx_memzero(&u, sizeof(ngx_url_t));
 
@@ -3003,6 +3004,8 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         }
     }
 
+    clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
+    clcf->ctx = ctx;
 
     /* parse inside upstream{} */
 

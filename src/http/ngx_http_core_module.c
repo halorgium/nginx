@@ -1911,6 +1911,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     save = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_LOC_CONF;
+    clcf->ctx = ctx;
 
     rv = ngx_conf_parse(cf, NULL);
 
@@ -2980,6 +2981,7 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     lcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
     clcf->limit_except_loc_conf = ctx->loc_conf;
+    lcf->ctx = ctx;
     lcf->loc_conf = ctx->loc_conf;
     lcf->name = clcf->name;
     lcf->noname = 1;

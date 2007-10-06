@@ -1014,12 +1014,20 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_array_t *locations,
     char                       *rv;
     ngx_uint_t                  i;
     ngx_http_core_loc_conf_t  **clcfp;
+    ngx_conf_t                  pcf;
 
     clcfp = locations->elts;
 
     for (i = 0; i < locations->nelts; i++) {
+        pcf = *cf;
+        if (!clcfp[i]->ctx) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "Internal error: null location context, please report");
+            return NGX_CONF_ERROR;
+        }
+        cf->ctx = clcfp[i]->ctx;
         rv = module->merge_loc_conf(cf, loc_conf[ctx_index],
                                     clcfp[i]->loc_conf[ctx_index]);
+        *cf = pcf;
         if (rv != NGX_CONF_OK) {
             return rv;
         }

@@ -285,6 +285,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_uint_t    types_hash_max_size;
     ngx_uint_t    types_hash_bucket_size;
 
+    ngx_conf_t    main_conf;
     ngx_http_conf_ctx_t    *ctx;
 #if 0
     ngx_http_core_loc_conf_t  *prev_location;

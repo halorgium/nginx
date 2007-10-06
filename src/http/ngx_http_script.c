@@ -878,8 +878,7 @@ ngx_http_script_if_code(ngx_http_script_engine_t *e)
 
     if (e->sp->len && e->sp->data[0] != '0') {
         if (code->loc_conf) {
-            e->request->loc_conf = code->loc_conf;
-            ngx_http_update_location_config(e->request);
+            ngx_http_merge_request_location_config(e->request, code->loc_conf);
         }
 
         e->ip += sizeof(ngx_http_script_if_code_t);

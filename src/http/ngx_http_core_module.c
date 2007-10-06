@@ -890,6 +890,51 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     return NGX_OK;
 }
 
+void
+ngx_http_merge_request_location_config(ngx_http_request_t *r, void **loc_conf)
+{
+    ngx_uint_t                  i;
+    ngx_http_module_t          *module;
+    ngx_conf_t                  cf;
+    void                      **old_loc_conf;
+    ngx_http_conf_ctx_t        *ctx, *pctx;
+    ngx_http_core_loc_conf_t   *clcf;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    old_loc_conf = r->loc_conf;
+    r->loc_conf = ngx_pcalloc(r->pool, sizeof(void*) * ngx_http_max_module);
+
+    cf = clcf->main_conf;
+
+    ctx = ngx_pcalloc(r->pool, sizeof *ctx);
+    pctx = cf.ctx;
+    ctx->main_conf = pctx->main_conf;
+    ctx->srv_conf = pctx->srv_conf;
+    ctx->loc_conf = r->loc_conf;
+
+    cf.ctx = ctx;
+
+    for (i = 0; ngx_modules[i]; i++) {
+        ngx_uint_t mi = ngx_modules[i]->ctx_index;
+
+        if (ngx_modules[i]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        module = ngx_modules[i]->ctx;
+
+        if (module->create_loc_conf) {
+            r->loc_conf[mi] = module->create_loc_conf(&cf);
+        }
+
+        if (module->merge_loc_conf) {
+            module->merge_loc_conf(&cf, old_loc_conf[mi], r->loc_conf[mi]);
+            module->merge_loc_conf(&cf, loc_conf[mi], r->loc_conf[mi]);
+        }
+    }
+    ngx_http_update_location_config(r);
+}
 
 void
 ngx_http_update_location_config(ngx_http_request_t *r)
@@ -2360,6 +2405,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->recursive_error_pages = NGX_CONF_UNSET;
     lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
+    lcf->main_conf = *cf;
 
     return lcf;
 }

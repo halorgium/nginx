@@ -1897,12 +1897,13 @@ peers:
                                         "or inside named location, "
                                         "or inside the \"if\" statement, "
                                         "or inside the \"limit_except\" block"); /* why? */
-                } else {
-                      clcf->handler = ngx_http_proxy_handler;
-                      conf->upstream.location = clcf->name;
-
-                      if (clcf->name.data[clcf->name.len - 1] == '/') {
-                          clcf->auto_redirect = 1;
+            } else {
+                clcf->handler = ngx_http_proxy_handler;
+                if (clcf->name.data && clcf->name.len) {
+                    conf->upstream.location = clcf->name;
+                    if (clcf->name.data[clcf->name.len - 1] == '/') {
+                        clcf->auto_redirect = 1;
+                    }
                 }
              }
          }

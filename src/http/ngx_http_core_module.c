@@ -930,8 +930,8 @@ ngx_http_merge_request_location_config(ngx_http_request_t *r, void **loc_conf)
         }
 
         if (module->merge_loc_conf) {
-            module->merge_loc_conf(&cf, old_loc_conf[mi], r->loc_conf[mi]);
             module->merge_loc_conf(&cf, loc_conf[mi], r->loc_conf[mi]);
+            module->merge_loc_conf(&cf, old_loc_conf[mi], r->loc_conf[mi]);
         }
     }
     ngx_http_update_location_config(r);

@@ -393,10 +393,10 @@ ngx_http_upstream_get_fair_peer(ngx_peer_connection_t *pc, void *data)
         }
 
         pc->name = fp->rrpd.peers->name;
-    fp->current = NGX_PEER_INVALID;
-    if (pc->tries > 0) {
-        pc->tries--;
-    }
+        fp->current = NGX_PEER_INVALID;
+        if (pc->tries > 0) {
+            pc->tries--;
+        }
         return NGX_BUSY;
     }
 

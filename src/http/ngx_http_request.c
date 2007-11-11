@@ -1205,10 +1205,10 @@ static ngx_int_t
 ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    if (ngx_strstr(h->value.data, "close")) {
+    if (ngx_strcasestrn(h->value.data, "close", 5 - 1)) {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
-    } else if (ngx_strstr(h->value.data, "keep-alive")) {
+    } else if (ngx_strcasestrn(h->value.data, "keep-alive", 10 - 1)) {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
     }
 
@@ -1320,7 +1320,8 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->headers_in.transfer_encoding
-        && ngx_strstr(r->headers_in.transfer_encoding->value.data, "chunked"))
+        && ngx_strcasestrn(r->headers_in.transfer_encoding->value.data,
+                           "chunked", 7 - 1))
     {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent \"Transfer-Encoding: chunked\" header");
@@ -1352,7 +1353,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
         user_agent = r->headers_in.user_agent->value.data;
 
-        ua = (u_char *) ngx_strstr(user_agent, "MSIE");
+        ua = ngx_strstrn(user_agent, "MSIE", 4 - 1);
 
         if (ua && ua + 8 < user_agent + r->headers_in.user_agent->value.len) {
 
@@ -1370,7 +1371,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 #endif
         }
 
-        if (ngx_strstr(user_agent, "Opera")) {
+        if (ngx_strstrn(user_agent, "Opera", 5 - 1)) {
             r->headers_in.opera = 1;
             r->headers_in.msie = 0;
             r->headers_in.msie4 = 0;
@@ -1378,10 +1379,10 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
         if (!r->headers_in.msie && !r->headers_in.opera) {
 
-            if (ngx_strstr(user_agent, "Gecko/")) {
+            if (ngx_strstrn(user_agent, "Gecko/", 6 - 1)) {
                 r->headers_in.gecko = 1;
 
-            } else if (ngx_strstr(user_agent, "Konqueror")) {
+            } else if (ngx_strstrn(user_agent, "Konqueror", 9 - 1)) {
                 r->headers_in.konqueror = 1;
             }
         }
@@ -1456,26 +1457,55 @@ static void
 ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
     ngx_uint_t hash)
 {
-    ngx_http_virtual_names_t  *vn;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
+#if (NGX_PCRE)
+    ngx_int_t                  n;
+    ngx_uint_t                 i;
+    ngx_str_t                  name;
+    ngx_http_server_name_t    *sn;
+#endif
 
-    vn = r->virtual_names;
+    cscf = ngx_hash_find_combined(&r->virtual_names->names, hash, host, len);
 
-    if (vn->hash.buckets) {
-        cscf = ngx_hash_find(&vn->hash, hash, host, len);
-        if (cscf) {
+    if (cscf) {
+        goto found;
+    }
+
+#if (NGX_PCRE)
+
+    if (r->virtual_names->nregex) {
+
+        name.len = len;
+        name.data = host;
+
+        sn = r->virtual_names->regex;
+
+        for (i = 0; i < r->virtual_names->nregex; i++) {
+
+            n = ngx_regex_exec(sn[i].regex, &name, NULL, 0);
+
+            if (n == NGX_REGEX_NO_MATCHED) {
+                continue;
+            }
+
+            if (n < 0) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              ngx_regex_exec_n
+                              " failed: %d on \"%V\" using \"%V\"",
+                              n, &name, &sn[i].name);
+                return;
+            }
+
+            /* match */
+
+            cscf = sn[i].core_srv_conf;
+
             goto found;
         }
     }
 
-    if (vn->dns_wildcards && vn->dns_wildcards->hash.buckets) {
-        cscf = ngx_hash_find_wildcard(vn->dns_wildcards, host, len);
-
-        if (cscf) {
-            goto found;
-        }
-    }
+#endif
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 

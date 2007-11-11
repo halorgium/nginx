@@ -337,10 +337,26 @@ ngx_http_upstream_get_fair_peer(ngx_peer_connection_t *pc, void *data)
      * and advance the "current peer" for the next run of round-robin
      */
     if (first_peer != fp->rrpd.current) {
+        ngx_http_upstream_rr_peer_t *orig_peer = &fp->rrpd.peers->peer[first_peer];
         ngx_http_upstream_rr_peer_t *peer = &fp->rrpd.peers->peer[fp->rrpd.current];
-        ngx_uint_t next_peer = fp->rrpd.current + 1;
+        ngx_uint_t next_peer = fp->rrpd.current + 1; /* advance regardless of current_weight */
+
         if (next_peer >= fp->rrpd.peers->number) {
             next_peer = 0;
+        }
+
+        /* undo ajdustments made to the original peer by rr algorithm */
+        if (orig_peer->current_weight == orig_peer->weight) {
+            orig_peer->current_weight = 1;
+        } else {
+            orig_peer->current_weight++;
+        }
+
+        /* adjust the new peer accordingly */
+        if (peer->current_weight == 1) {
+            peer->current_weight = peer->weight;
+        } else {
+            peer->current_weight--;
         }
 
         pc->sockaddr = peer->sockaddr;

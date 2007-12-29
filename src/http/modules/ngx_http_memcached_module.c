@@ -58,7 +58,7 @@ static ngx_conf_bitmask_t  ngx_http_memcached_next_upstream_masks[] = {
 static ngx_command_t  ngx_http_memcached_commands[] = {
 
     { ngx_string("memcached_pass"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_memcached_pass,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -183,6 +183,8 @@ ngx_http_memcached_handler(ngx_http_request_t *r)
     if (u == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    u->schema = mlcf->upstream.schema;
 
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
@@ -522,8 +524,6 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
-     *
-     *     conf->index = 0;
      */
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
@@ -545,6 +545,8 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.intercept_404 = 1;
     conf->upstream.pass_request_headers = 0;
     conf->upstream.pass_request_body = 0;
+
+    conf->index = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -578,6 +580,15 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) {
         conf->upstream.next_upstream = NGX_CONF_BITMASK_SET
                                        |NGX_HTTP_UPSTREAM_FT_OFF;
+    }
+
+    if (conf->upstream.upstream == NULL) {
+        conf->upstream.upstream = prev->upstream.upstream;
+        conf->upstream.schema = prev->upstream.schema;
+    }
+
+    if (conf->index == NGX_CONF_UNSET) {
+        conf->index = prev->index;
     }
 
     return NGX_CONF_OK;
@@ -615,8 +626,6 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     clcf->handler = ngx_http_memcached_handler;
-
-    lcf->upstream.location = clcf->name;
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;

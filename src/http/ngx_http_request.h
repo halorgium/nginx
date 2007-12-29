@@ -168,6 +168,7 @@ typedef struct {
     ngx_table_elt_t                  *content_type;
 
     ngx_table_elt_t                  *range;
+    ngx_table_elt_t                  *if_range;
 
     ngx_table_elt_t                  *transfer_encoding;
 
@@ -229,6 +230,7 @@ typedef struct {
     ngx_table_elt_t                  *content_length;
     ngx_table_elt_t                  *content_encoding;
     ngx_table_elt_t                  *location;
+    ngx_table_elt_t                  *refresh;
     ngx_table_elt_t                  *last_modified;
     ngx_table_elt_t                  *content_range;
     ngx_table_elt_t                  *accept_ranges;
@@ -427,6 +429,8 @@ struct ngx_http_request_s {
     unsigned                          subrequest_in_memory:1;
 
     unsigned                          header_timeout_set:1;
+
+    unsigned                          gzip:2;
 
     unsigned                          proxy:1;
     unsigned                          bypass_cache:1;

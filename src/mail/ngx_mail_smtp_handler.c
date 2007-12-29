@@ -29,6 +29,7 @@ static void ngx_mail_smtp_log_rejected_command(ngx_mail_session_t *s,
 
 static u_char  smtp_ok[] = "250 2.0.0 OK" CRLF;
 static u_char  smtp_bye[] = "221 2.0.0 Bye" CRLF;
+static u_char  smtp_starttls[] = "220 2.0.0 Start TLS" CRLF;
 static u_char  smtp_next[] = "334 " CRLF;
 static u_char  smtp_username[] = "334 VXNlcm5hbWU6" CRLF;
 static u_char  smtp_password[] = "334 UGFzc3dvcmQ6" CRLF;
@@ -250,6 +251,8 @@ ngx_mail_smtp_auth_state(ngx_event_t *rev)
 
             case NGX_SMTP_STARTTLS:
                 rc = ngx_mail_smtp_starttls(s, c);
+                s->out.len = sizeof(smtp_starttls) - 1;
+                s->out.data = smtp_starttls;
                 break;
 
             default:
@@ -319,9 +322,6 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_str_t                 *arg;
     ngx_mail_smtp_srv_conf_t  *sscf;
-#if (NGX_MAIL_SSL)
-    ngx_mail_ssl_conf_t       *sslcf;
-#endif
 
     if (s->args.nelts != 1) {
         s->out.len = sizeof(smtp_invalid_argument) - 1;
@@ -352,6 +352,8 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
 #if (NGX_MAIL_SSL)
 
         if (c->ssl == NULL) {
+            ngx_mail_ssl_conf_t  *sslcf;
+
             sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
             if (sslcf->starttls == NGX_MAIL_STARTTLS_ON) {

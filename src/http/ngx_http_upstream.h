@@ -138,9 +138,6 @@ typedef struct {
     ngx_array_t                    *pass_headers;
 
     ngx_str_t                       schema;
-    ngx_str_t                       uri;
-    ngx_str_t                       location;
-    ngx_str_t                       url;  /* used in proxy_rewrite_location */
 
     ngx_array_t                    *store_lengths;
     ngx_array_t                    *store_values;
@@ -199,6 +196,15 @@ typedef struct {
 } ngx_http_upstream_headers_in_t;
 
 
+typedef struct {
+    ngx_str_t                       host;
+    in_port_t                       port;
+    ngx_uint_t                      naddrs;
+    in_addr_t                      *addrs;
+    ngx_resolver_ctx_t             *ctx;
+} ngx_http_upstream_resolved_t;
+
+
 struct ngx_http_upstream_s {
     ngx_peer_connection_t           peer;
 
@@ -212,6 +218,8 @@ struct ngx_http_upstream_s {
     ngx_http_upstream_conf_t       *conf;
 
     ngx_http_upstream_headers_in_t  headers_in;
+
+    ngx_http_upstream_resolved_t   *resolved;
 
     ngx_buf_t                       buffer;
     size_t                          length;
@@ -235,10 +243,10 @@ struct ngx_http_upstream_s {
 
     ngx_msec_t                      timeout;
 
-    ngx_str_t                       method;
-
     ngx_http_upstream_state_t      *state;
 
+    ngx_str_t                       method;
+    ngx_str_t                       schema;
     ngx_str_t                       uri;
 
     ngx_http_cleanup_pt            *cleanup;
@@ -246,6 +254,7 @@ struct ngx_http_upstream_s {
     unsigned                        store:1;
     unsigned                        cacheable:1;
     unsigned                        accel:1;
+    unsigned                        ssl:1;
 
     unsigned                        buffering:1;
 
@@ -260,6 +269,9 @@ ngx_int_t ngx_http_upstream_header_variable(ngx_http_request_t *r,
 void ngx_http_upstream_init(ngx_http_request_t *r);
 ngx_http_upstream_srv_conf_t *ngx_http_upstream_add(ngx_conf_t *cf,
     ngx_url_t *u, ngx_uint_t flags);
+ngx_int_t ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
+    ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev,
+    ngx_str_t *default_hide_headers, ngx_hash_init_t *hash);
 
 
 #define ngx_http_conf_upstream_srv_conf(uscf, module)                         \

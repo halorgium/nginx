@@ -28,7 +28,7 @@ typedef struct {
     unsigned    len:29;
 
     unsigned    valid:1;
-    unsigned    no_cachable:1;
+    unsigned    no_cacheable:1;
     unsigned    not_found:1;
 
     u_char     *data;
@@ -126,6 +126,11 @@ u_char *ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args);
 ngx_int_t ngx_strcasecmp(u_char *s1, u_char *s2);
 ngx_int_t ngx_strncasecmp(u_char *s1, u_char *s2, size_t n);
 
+u_char *ngx_strnstr(u_char *s1, char *s2, size_t n);
+
+u_char *ngx_strstrn(u_char *s1, char *s2, size_t n);
+u_char *ngx_strcasestrn(u_char *s1, char *s2, size_t n);
+
 ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2);
@@ -150,18 +155,21 @@ size_t ngx_utf_length(u_char *p, size_t n);
 u_char *ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n);
 
 
-#define NGX_ESCAPE_URI        0
-#define NGX_ESCAPE_ARGS       1
-#define NGX_ESCAPE_HTML       2
-#define NGX_ESCAPE_REFRESH    3
-#define NGX_ESCAPE_MEMCACHED  4
-#define NGX_ESCAPE_MAIL_AUTH  5
+#define NGX_ESCAPE_URI         0
+#define NGX_ESCAPE_ARGS        1
+#define NGX_ESCAPE_HTML        2
+#define NGX_ESCAPE_REFRESH     3
+#define NGX_ESCAPE_MEMCACHED   4
+#define NGX_ESCAPE_MAIL_AUTH   5
 
-#define NGX_UNESCAPE_URI      1
+#define NGX_UNESCAPE_URI       1
+#define NGX_UNESCAPE_REDIRECT  2
 
 uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);
 void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
+uintptr_t ngx_escape_html(u_char *dst, u_char *src, size_t size);
+
 
 
 void ngx_sort(void *base, size_t n, size_t size,

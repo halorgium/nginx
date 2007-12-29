@@ -124,6 +124,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_major_digit,
         sw_first_minor_digit,
         sw_minor_digit,
+        sw_spaces_after_digit,
         sw_almost_done
     } state;
 
@@ -335,18 +336,26 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
+            r->host_end = p;
+
             switch (ch) {
             case ':':
-                r->host_end = p;
                 state = sw_port;
                 break;
             case '/':
-                r->host_end = p;
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
                 break;
+            case ' ':
+                /*
+                 * use single "/" from request line to preserve pointers,
+                 * if request line will be copied to large client buffer
+                 */
+                r->uri_start = r->schema_end + 1;
+                r->uri_end = r->schema_end + 2;
+                state = sw_http_09;
+                break;
             default:
-                r->host_end = p;
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
@@ -361,6 +370,16 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->port_end = p;
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
+                break;
+            case ' ':
+                r->port_end = p;
+                /*
+                 * use single "/" from request line to preserve pointers,
+                 * if request line will be copied to large client buffer
+                 */
+                r->uri_start = r->schema_end + 1;
+                r->uri_end = r->schema_end + 2;
+                state = sw_http_09;
                 break;
             default:
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
@@ -618,11 +637,30 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 goto done;
             }
 
+            if (ch == ' ') {
+                state = sw_spaces_after_digit;
+                break;
+            }
+
             if (ch < '0' || ch > '9') {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
             r->http_minor = r->http_minor * 10 + ch - '0';
+            break;
+
+        case sw_spaces_after_digit:
+            switch (ch) {
+            case ' ':
+                break;
+            case CR:
+                state = sw_almost_done;
+                break;
+            case LF:
+                goto done;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
             break;
 
         /* end of request line */
@@ -890,7 +928,7 @@ header_done:
 
 
 ngx_int_t
-ngx_http_parse_complex_uri(ngx_http_request_t *r)
+ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 {
     u_char  c, ch, decoded, *p, *u;
     enum {
@@ -998,8 +1036,12 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r)
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
+                break;
 #endif
             case '/':
+                if (merge_slashes) {
+                    *u++ = ch;
+                }
                 break;
             case '.':
                 state = sw_dot;

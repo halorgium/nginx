@@ -183,6 +183,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, ignore_invalid_headers),
       NULL },
 
+    { ngx_string("merge_slashes"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_core_srv_conf_t, merge_slashes),
+      NULL },
+
     { ngx_string("location"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
       ngx_http_core_location,
@@ -425,6 +432,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, recursive_error_pages),
       NULL },
 
+    { ngx_string("server_tokens"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, server_tokens),
+      NULL },
+
     { ngx_string("error_page"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_2MORE,
@@ -662,7 +676,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
         && clcf->client_max_body_size < r->headers_in.content_length_n)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "client intented to send too large body: %O bytes",
+                      "client intended to send too large body: %O bytes",
                       r->headers_in.content_length_n);
 
         ngx_http_finalize_request(r, NGX_HTTP_REQUEST_ENTITY_TOO_LARGE);
@@ -877,7 +891,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
         if (ngx_http_map_uri_to_path(r, &path, &root, 0) != NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "directory index of \"%V\" is forbidden", &path);
+                          "directory index of \"%s\" is forbidden", path.data);
         }
 
         ngx_http_finalize_request(r, NGX_HTTP_FORBIDDEN);
@@ -1624,7 +1638,7 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
     }
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "could not find name location \"%V\"", name);
+                  "could not find named location \"%V\"", name);
 
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return NGX_DONE;
@@ -2260,6 +2274,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
     cscf->client_header_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->optimize_server_names = NGX_CONF_UNSET;
     cscf->ignore_invalid_headers = NGX_CONF_UNSET;
+    cscf->merge_slashes = NGX_CONF_UNSET;
 
     return cscf;
 }
@@ -2319,9 +2334,12 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
+#if (NGX_PCRE)
+        sn->regex = NULL;
+#endif
+        sn->core_srv_conf = conf;
         sn->name.len = conf->server_name.len;
         sn->name.data = conf->server_name.data;
-        sn->core_srv_conf = conf;
     }
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
@@ -2348,6 +2366,8 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->ignore_invalid_headers,
                               prev->ignore_invalid_headers, 1);
+
+    ngx_conf_merge_value(conf->merge_slashes, prev->merge_slashes, 1);
 
     return NGX_CONF_OK;
 }
@@ -2404,6 +2424,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->msie_refresh = NGX_CONF_UNSET;
     lcf->log_not_found = NGX_CONF_UNSET;
     lcf->recursive_error_pages = NGX_CONF_UNSET;
+    lcf->server_tokens = NGX_CONF_UNSET;
     lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
     lcf->main_conf = *cf;
@@ -2589,6 +2610,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->log_not_found, prev->log_not_found, 1);
     ngx_conf_merge_value(conf->recursive_error_pages,
                               prev->recursive_error_pages, 0);
+    ngx_conf_merge_value(conf->server_tokens, prev->server_tokens, 1);
 
     if (conf->open_files == NULL) {
         conf->open_files = prev->open_files;
@@ -2623,7 +2645,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.listen = 1;
     u.default_port = 80;
 
-    if (ngx_parse_url(cf, &u) != NGX_OK) {
+    if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
         if (u.err) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "%s in \"%V\" of the \"listen\" directive",
@@ -2767,16 +2789,27 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t               *value, name;
     ngx_uint_t               i;
     ngx_http_server_name_t  *sn;
+#if (NGX_PCRE)
+    ngx_str_t                err;
+    u_char                   errstr[NGX_MAX_CONF_ERRSTR];
+#endif
 
     value = cf->args->elts;
 
     ch = value[1].data[0];
 
     if (cscf->server_name.data == NULL && value[1].len) {
-        if (ch == '*') {
+        if (ngx_strchr(value[1].data, '*')) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "first server name \"%V\" must not be wildcard",
                                &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        if (value[1].data[0] == '~') {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "first server name \"%V\" "
+                               "must not be regular expression", &value[1]);
             return NGX_CONF_ERROR;
         }
 
@@ -2823,9 +2856,42 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
+#if (NGX_PCRE)
+        sn->regex = NULL;
+#endif
+        sn->core_srv_conf = cscf;
         sn->name.len = value[i].len;
         sn->name.data = value[i].data;
-        sn->core_srv_conf = cscf;
+
+        if (value[i].data[0] != '~') {
+            continue;
+        }
+
+#if (NGX_PCRE)
+        err.len = NGX_MAX_CONF_ERRSTR;
+        err.data = errstr;
+
+        value[i].len--;
+        value[i].data++;
+
+        sn->regex = ngx_regex_compile(&value[i], NGX_REGEX_CASELESS, cf->pool,
+                                      &err);
+
+        if (sn->regex == NULL) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+            return NGX_CONF_ERROR;
+        }
+
+        sn->name.len = value[i].len;
+        sn->name.data = value[i].data;
+
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the using of the regex \"%V\" "
+                           "requires PCRE library", &value[i]);
+
+        return NGX_CONF_ERROR;
+#endif
     }
 
     return NGX_CONF_OK;

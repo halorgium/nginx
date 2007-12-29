@@ -303,10 +303,10 @@ static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
 static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 
     { ngx_string("date_local"), NULL, ngx_http_ssi_date_gmt_local_variable, 0,
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("date_gmt"), NULL, ngx_http_ssi_date_gmt_local_variable, 1,
-      NGX_HTTP_VAR_NOCACHABLE, 0 },
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -1858,6 +1858,8 @@ static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
+    u_char                      *dst, *src;
+    size_t                       len;
     ngx_int_t                    rc, key;
     ngx_str_t                   *uri, *file, *wait, *set, *stub, args;
     ngx_buf_t                   *b;
@@ -1927,12 +1929,24 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         return rc;
     }
 
-    args.len = 0;
-    args.data = NULL;
-    flags = 0;
+    dst = uri->data;
+    src = uri->data;
+
+    ngx_unescape_uri(&dst, &src, uri->len, NGX_UNESCAPE_URI);
+
+    len = (uri->data + uri->len) - src;
+    if (len) {
+        dst = ngx_copy(dst, src, len);
+    }
+
+    uri->len = dst - uri->data;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "ssi include: \"%V\"", uri);
+
+    args.len = 0;
+    args.data = NULL;
+    flags = 0;
 
     if (ngx_http_parse_unsafe_uri(r, uri, &args, &flags) != NGX_OK) {
         return NGX_HTTP_SSI_ERROR;
@@ -2641,15 +2655,16 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
     char                 buf[NGX_HTTP_SSI_DATE_LEN];
 
     v->valid = 1;
-    v->no_cachable = 0;
+    v->no_cacheable = 0;
     v->not_found = 0;
 
     tp = ngx_timeofday();
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
-    if (ctx->timefmt.len == sizeof("%s") - 1
-        && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's')
+    if (ctx == NULL
+        || (ctx->timefmt.len == sizeof("%s") - 1
+            && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's'))
     {
         v->data = ngx_palloc(r->pool, NGX_TIME_T_LEN);
         if (v->data == NULL) {

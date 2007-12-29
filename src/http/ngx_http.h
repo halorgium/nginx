@@ -64,7 +64,8 @@ int ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
 #endif
 
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
-ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r);
+ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r,
+    ngx_uint_t merge_slashes);
 ngx_int_t ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args, ngx_uint_t *flags);
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b);
@@ -110,11 +111,6 @@ extern uint64_t    ngx_http_total_sent;
 
 extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
 extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
-
-
-/* STUB */
-ngx_int_t ngx_http_log_handler(ngx_http_request_t *r);
-/**/
 
 
 #endif /* _NGX_HTTP_H_INCLUDED_ */

@@ -1,4 +1,66 @@
 
+Changes with nginx 0.5.34                                        13 Dec 2007
+
+    *) Change: now the full request line instead of URI only is written to 
+       error_log.
+
+    *) Feature: Cygwin compatibility.
+       Thanks to Vladimir Kutakov.
+
+    *) Feature: the "merge_slashes" directive.
+
+    *) Feature: the "gzip_vary" directive.
+
+    *) Feature: the "server_tokens" directive.
+
+    *) Feature: the "access_log" directive may be used inside the 
+       "limit_except" block.
+
+    *) Bugfix: if the $server_protocol was used in FastCGI parameters and a 
+       request line length was near to the "client_header_buffer_size" 
+       directive value, then nginx issued an alert "fastcgi: the request 
+       record is too big".
+
+    *) Bugfix: if a plain text HTTP/0.9 version request was made to HTTPS 
+       server, then nginx returned usual response.
+
+    *) Bugfix: URL double escaping in a redirect of the "msie_refresh" 
+       directive; bug appeared in 0.5.28.
+
+    *) Bugfix: a segmentation fault might occur in worker process if 
+       subrequests were used.
+
+    *) Bugfix: the big responses may be transferred truncated if SSL and 
+       gzip were used.
+
+    *) Bugfix: compatibility with mget.
+
+    *) Bugfix: nginx did not unescape URI in the "include" SSI command.
+
+    *) Bugfix: the segmentation fault was occurred on start or while 
+       reconfiguration if variable was used in the "charset" or 
+       "source_charset" directives.
+
+    *) Bugfix: nginx returned the 400 response on requests like 
+       "GET http://www.domain.com HTTP/1.0".
+       Thanks to James Oakley.
+
+    *) Bugfix: a segmentation fault occurred in worker process if 
+       $date_local and $date_gmt were used outside the 
+       ngx_http_ssi_filter_module.
+
+    *) Bugfix: a segmentation fault might occur in worker process if debug 
+       log was enabled.
+       Thanks to Andrei Nigmatulin.
+
+    *) Bugfix: ngx_http_memcached_module did not set 
+       $upstream_response_time.
+       Thanks to Maxim Dounin.
+
+    *) Bugfix: a worker process may got caught in an endless loop, if the 
+       memcached was used.
+
+
 Changes with nginx 0.5.33                                        07 Nov 2007
 
     *) Change: now by default the "echo" SSI command uses entity encoding.

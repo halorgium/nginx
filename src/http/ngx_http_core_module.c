@@ -928,6 +928,7 @@ ngx_http_merge_request_location_config(ngx_http_request_t *r, void **loc_conf)
     ctx->loc_conf = r->loc_conf;
 
     cf.ctx = ctx;
+    cf.pool = r->pool;
     cf.temp_pool = r->pool;
 
     for (i = 0; ngx_modules[i]; i++) {

@@ -14,7 +14,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     ngx_int_t type);
 static void ngx_start_garbage_collector(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
-static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle);
+static ngx_uint_t ngx_reap_children(ngx_cycle_t *cycle);
 static void ngx_master_process_exit(ngx_cycle_t *cycle);
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority);
@@ -157,9 +157,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reap) {
             ngx_reap = 0;
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap childs");
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap children");
 
-            live = ngx_reap_childs(cycle);
+            live = ngx_reap_children(cycle);
         }
 
         if (!live && (ngx_terminate || ngx_quit)) {
@@ -409,6 +409,12 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     ngx_err_t      err;
     ngx_channel_t  ch;
 
+#if (NGX_BROKEN_SCM_RIGHTS)
+
+    ch.command = 0;
+
+#else
+
     switch (signo) {
 
     case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
@@ -426,6 +432,8 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     default:
         ch.command = 0;
     }
+
+#endif
 
     ch.fd = -1;
 
@@ -496,7 +504,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 
 
 static ngx_uint_t
-ngx_reap_childs(ngx_cycle_t *cycle)
+ngx_reap_children(ngx_cycle_t *cycle)
 {
     ngx_int_t         i, n;
     ngx_uint_t        live;
@@ -1035,7 +1043,6 @@ static void
 ngx_channel_handler(ngx_event_t *ev)
 {
     ngx_int_t          n;
-    ngx_socket_t       fd;
     ngx_channel_t      ch;
     ngx_connection_t  *c;
 
@@ -1053,17 +1060,7 @@ ngx_channel_handler(ngx_event_t *ev)
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
 
     if (n == NGX_ERROR) {
-
-        ngx_free_connection(c);
-
-        fd = c->fd;
-        c->fd = (ngx_socket_t) -1;
-
-        if (close(fd) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
-                          "close() channel failed");
-        }
-
+        ngx_close_connection(c);
         return;
     }
 

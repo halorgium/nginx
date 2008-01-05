@@ -143,6 +143,7 @@ typedef struct {
 
     ngx_flag_t                 optimize_server_names;
     ngx_flag_t                 ignore_invalid_headers;
+    ngx_flag_t                 merge_slashes;
 } ngx_http_core_srv_conf_t;
 
 
@@ -151,8 +152,10 @@ typedef struct {
 
 typedef struct {
     in_addr_t                  addr;
+
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
+
     ngx_http_virtual_names_t  *virtual_names;
 } ngx_http_in_addr_t;
 
@@ -175,9 +178,15 @@ typedef struct {
     in_addr_t                  addr;
 
     ngx_hash_t                 hash;
-    ngx_hash_wildcard_t       *dns_wildcards;
+    ngx_hash_wildcard_t       *wc_head;
+    ngx_hash_wildcard_t       *wc_tail;
 
     ngx_array_t                names;      /* array of ngx_http_server_name_t */
+
+#if (NGX_PCRE)
+    ngx_uint_t                 nregex;
+    ngx_http_server_name_t    *regex;
+#endif
 
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
@@ -189,10 +198,13 @@ typedef struct {
 } ngx_http_conf_in_addr_t;
 
 
-typedef struct {
-    ngx_str_t                  name;
+struct ngx_http_server_name_s {
+#if (NGX_PCRE)
+    ngx_regex_t               *regex;
+#endif
     ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
-} ngx_http_server_name_t;
+    ngx_str_t                  name;
+};
 
 
 typedef struct {
@@ -273,6 +285,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    msie_refresh;            /* msie_refresh */
     ngx_flag_t    log_not_found;           /* log_not_found */
     ngx_flag_t    recursive_error_pages;   /* recursive_error_pages */
+    ngx_flag_t    server_tokens;           /* server_tokens */
 
     ngx_array_t  *error_pages;             /* error_page */
 

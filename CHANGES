@@ -1,4 +1,35 @@
 
+Changes with nginx 0.5.35                                        08 Jan 2008
+
+    *) Change: now the ngx_http_userid_module adds start time microseconds 
+       to the cookie field contains a pid value.
+
+    *) Change: now the uname(2) is used on Linux instead of procfs.
+       Thanks to Ilya Novikov.
+
+    *) Feature: the "If-Range" request header line support.
+       Thanks to Alexander V. Inyukhin.
+
+    *) Bugfix: in HTTPS mode requests might fail with the "bad write retry" 
+       error; bug appeared in 0.5.13.
+
+    *) Bugfix: the STARTTLS in SMTP mode did not work.
+       Thanks to Oleg Motienko.
+
+    *) Bugfix: large_client_header_buffers did not freed before going to 
+       keep-alive state.
+       Thanks to Olexander Shtepa.
+
+    *) Bugfix: the "limit_rate" directive did not allow to use full 
+       throughput, even if limit value was very high.
+
+    *) Bugfix: the $status variable was equal to 0 if a proxied server 
+       returned response in HTTP/0.9 version.
+
+    *) Bugfix: if the "?" character was in a "error_page" directive, then 
+       it was escaped in a proxied request; bug appeared in 0.5.32.
+
+
 Changes with nginx 0.5.34                                        13 Dec 2007
 
     *) Change: now the full request line instead of URI only is written to 

@@ -17,7 +17,7 @@ static void ngx_conf_flush_files(ngx_cycle_t *cycle);
 static ngx_command_t  ngx_conf_commands[] = {
 
     { ngx_string("include"),
-      NGX_ANY_CONF|NGX_CONF_TAKE1,
+      NGX_ANY_CONF|NGX_CONF_TAKE1|NGX_CONF_TAKE2,
       ngx_conf_include,
       0,
       0,
@@ -635,9 +635,17 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t    n;
     ngx_str_t   *value, file;
     ngx_glob_t   gl;
+    ngx_int_t    optional = 0;
 
     value = cf->args->elts;
     file = value[1];
+
+    if (cf->args->nelts > 2) {
+        if (value[2].len == (sizeof "optional") - 1 &&
+            ngx_memcmp(value[2].data, "optional", (sizeof "optional") - 1) == 0) {
+            optional = 1;
+        }
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
@@ -651,9 +659,15 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     gl.log = cf->log;
 
     if (ngx_open_glob(&gl) != NGX_OK) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
-                           ngx_open_glob_n " \"%s\" failed", file.data);
-        return NGX_CONF_ERROR;
+        if (!optional) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                               ngx_open_glob_n " \"%s\" failed", file.data);
+            return NGX_CONF_ERROR;
+        } else {
+            ngx_conf_log_error(NGX_LOG_DEBUG, cf, ngx_errno,
+                               ngx_open_glob_n " \"%s\" failed", file.data);
+            return NGX_CONF_OK;
+        }
     }
 
     rv = NGX_CONF_OK;

@@ -373,7 +373,6 @@ struct ngx_http_request_s {
     uint32_t                          in_addr;
     ngx_uint_t                        port;
     ngx_str_t                        *port_text;    /* ":80" */
-    ngx_str_t                         server_name;
     ngx_http_virtual_names_t         *virtual_names;
 
     ngx_int_t                         phase_handler;
@@ -427,8 +426,6 @@ struct ngx_http_request_s {
 
     unsigned                          fast_subrequest:1;
     unsigned                          subrequest_in_memory:1;
-
-    unsigned                          header_timeout_set:1;
 
     unsigned                          gzip:2;
 
